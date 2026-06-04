@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://absabhi0-attendance-backend.hf.space",
+  baseURL: "http://127.0.0.1:8000", // Fixed: Trailing space removed!
 });
 
 /**
@@ -69,6 +69,17 @@ export const loginStudentProfile = (rollNumber, passcode) => {
     roll_number: rollNumber,
     passcode: passcode,
   });
+};
+
+/**
+ * Delete a student by their ID.
+ * Sends DELETE to /students/{studentId}
+ *
+ * @param {number|string} studentId
+ */
+export const deleteStudent = async (studentId) => {
+  // Using your existing 'api' instance so it automatically uses http://127.0.0.1:8000
+  return await api.delete(`/students/${studentId}`);
 };
 
 export default api;

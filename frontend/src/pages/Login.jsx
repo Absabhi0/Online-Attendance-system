@@ -69,7 +69,7 @@ export default function Login({ onSuccess }) {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0f1117]">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#0d1117]">
 
       {/* ── Ambient background blobs ── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -87,15 +87,63 @@ export default function Login({ onSuccess }) {
         />
       </div>
 
-      {/* ── Main glass card ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 32, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-md mx-4"
-      >
-        {/* Header */}
-        <div className="mb-8 text-center">
+      {/* ── Two-column wrapper ── */}
+      <div className="relative z-10 w-full max-w-5xl mx-6 flex flex-col lg:flex-row items-center gap-12 lg:gap-16 py-12">
+
+        {/* ── LEFT: Hero panel ── */}
+        <motion.div
+          initial={{ opacity: 0, x: -32 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="flex-1 text-left hidden lg:block"
+        >
+          {/* Brand */}
+          <div className="flex items-center gap-3 mb-10">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30">
+              <svg className="w-5 h-5 text-indigo-300" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-9 8l4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              </svg>
+            </div>
+            <span className="text-white font-semibold text-lg tracking-tight" style={{ fontFamily: "'DM Sans', sans-serif" }}>AttendAI</span>
+          </div>
+
+          {/* Hero headline */}
+          <h2 className="text-5xl font-bold text-white leading-tight mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            Attendance,{" "}
+            <span className="text-indigo-400">recognised</span>{" "}
+            in a glance.
+          </h2>
+          <p className="text-zinc-400 text-base leading-relaxed mb-10 max-w-sm">
+            Replace manual roll calls with biometric facial recognition. Register students once, then mark a whole class present in seconds.
+          </p>
+
+          {/* Stats row */}
+          <div className="flex gap-4">
+            {[
+              { value: "<2s", label: "per mark" },
+              { value: "5", label: "photos / student" },
+              { value: "99%", label: "less paperwork" },
+            ].map(({ value, label }) => (
+              <div
+                key={label}
+                className="flex-1 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-4 text-center"
+              >
+                <p className="text-white text-2xl font-bold" style={{ fontFamily: "'DM Sans', sans-serif" }}>{value}</p>
+                <p className="text-zinc-500 text-xs mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── RIGHT: Form card ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 32, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full lg:w-[420px] shrink-0"
+        >
+        {/* Mobile brand header (hidden on lg) */}
+        <div className="mb-8 text-center lg:hidden">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 mb-4">
             <svg className="w-7 h-7 text-indigo-300" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h6m-9 8l4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
@@ -227,7 +275,8 @@ export default function Login({ onSuccess }) {
         <p className="text-center text-xs text-zinc-600 mt-6">
           AttendAI · College Presentation Demo
         </p>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
