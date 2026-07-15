@@ -1,6 +1,7 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from app.database import supabase
 from app.services.face_service import extract_encoding_from_image
+from fastapi import HTTPException
 
 router = APIRouter(prefix="/students", tags=["Students"])
 
@@ -156,3 +157,19 @@ def student_login(credentials: StudentLoginRequest):
             "roll_number": student["roll_number"]
         }
     }
+
+@router.delete("/{student_id}")
+async def delete_student(student_id: str):  # <--- Changed 'int' to 'str' here!
+    """
+    Deletes a student from the Supabase database by their ID.
+    """
+    # 1. Attempt to delete the student where the ID matches
+    result = supabase.table("students").delete().eq("id", student_id).execute()
+    
+    # 2. If result.data is empty, it means no student was found with that ID
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Student not found or already deleted.")
+        
+    deleted_student = result.data[0]
+    
+    return {"message": f"Student '{deleted_student['name']}' deleted successfully"}

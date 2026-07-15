@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://absabhi0-attendance-backend.hf.space", 
+  baseURL: import.meta.env.VITE_API_BASE_URL || "https://absabhi0-attendance-backend.hf.space",
 });
 
 /**
@@ -30,14 +30,14 @@ export const registerStudent = (name, rollNumber, photos) => {
  * @param {string} courseId   - UUID of the selected course
  * @param {string} frameDataUrl - base64 data URL from react-webcam getScreenshot()
  */
-export const scanFace = async (courseId, frameDataUrl) => {
+export const scanFace = async (subject, frameDataUrl) => {
   // Convert base64 data URL → Blob → File
   const res = await fetch(frameDataUrl);
   const blob = await res.blob();
   const file = new File([blob], "frame.jpg", { type: "image/jpeg" });
 
   const formData = new FormData();
-  formData.append("course_id", courseId);
+  formData.append("subject", subject);
   formData.append("frame", file);
 
   return api.post("/attendance/scan", formData, {
@@ -54,8 +54,8 @@ export const fetchStudents = () => api.get("/students/");
  * Fetch today's attendance report, optionally filtered by course
  * @param {string} [courseId]
  */
-export const fetchAttendanceReport = (courseId = null) => {
-  const params = courseId ? { course_id: courseId } : {};
+export const fetchAttendanceReport = (subject = null) => {
+  const params = subject ? { subject } : {};
   return api.get("/attendance/report", { params });
 };
 
@@ -80,6 +80,14 @@ export const loginStudentProfile = (rollNumber, passcode) => {
 export const deleteStudent = async (studentId) => {
   // Using your existing 'api' instance so it automatically uses http://127.0.0.1:8000
   return await api.delete(`/students/${studentId}`);
+};
+
+export const registerProfessor = (name, subject, password) => {
+  return api.post("/professors/register", { name, subject, password });
+};
+
+export const loginProfessor = (email, password) => {
+  return api.post("/professors/login", { email, password });
 };
 
 export default api;

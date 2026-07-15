@@ -8,31 +8,16 @@ router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
 @router.post("/scan", status_code=200)
 async def scan_face(
-    course_id: str = Form(...),
+    subject: str = Form(...),
     frame: UploadFile = File(...),
 ):
     """
-    Receives a webcam frame and a course_id.
+    Receives a webcam frame and a subject (from the logged-in professor).
     1. Fetches all student encodings from Supabase.
     2. Runs face matching against the frame.
-    3. If matched, logs attendance (with duplicate guard for the same day).
+    3. If matched, logs attendance (with duplicate guard for the same day + subject).
     4. If not matched, returns a clear 'unregistered face' error.
     """
-
-    # --- Validate course exists ---
-    course_result = (
-        supabase.table("courses")
-        .select("id, name, code")
-        .eq("id", course_id)
-        .single()
-        .execute()
-    )
-    if not course_result.data:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Course with id '{course_id}' not found.",
-        )
-    course = course_result.data
 
     # --- Load all students with their encodings ---
     students_result = (
@@ -56,10 +41,7 @@ async def scan_face(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # --- No face detected at all ---
     if matched_student is None:
-        # Distinguish: did we detect a face but find no match, vs no face at all?
-        # find_matching_student returns None for both; we return 422 for demo clarity.
         raise HTTPException(
             status_code=422,
             detail={
@@ -74,12 +56,12 @@ async def scan_face(
     student_id = matched_student["id"]
     today = date.today().isoformat()
 
-    # --- Duplicate attendance guard (same student, same course, same day) ---
+    # --- Duplicate attendance guard (same student, same subject, same day) ---
     already_marked = (
         supabase.table("attendance")
         .select("id, time")
         .eq("student_id", student_id)
-        .eq("course_id", course_id)
+        .eq("subject", subject)
         .eq("date", today)
         .execute()
     )
@@ -92,7 +74,7 @@ async def scan_face(
                 "error": "ALREADY_MARKED",
                 "message": (
                     f"{matched_student['name']} is already marked present for "
-                    f"{course['name']} today (at {marked_time})."
+                    f"{subject} today (at {marked_time})."
                 ),
                 "student": {
                     "id": student_id,
@@ -107,7 +89,7 @@ async def scan_face(
         supabase.table("attendance")
         .insert({
             "student_id": student_id,
-            "course_id": course_id,
+            "subject": subject,
             "date": today,
         })
         .execute()
@@ -126,20 +108,16 @@ async def scan_face(
             "name": matched_student["name"],
             "roll_number": matched_student["roll_number"],
         },
-        "course": {
-            "id": course["id"],
-            "name": course["name"],
-            "code": course["code"],
-        },
+        "subject": subject,
         "date": today,
         "match_confidence": matched_student.get("match_confidence"),
     }
 
 
 @router.get("/report", status_code=200)
-async def get_attendance_report(course_id: str = None, report_date: str = None):
+async def get_attendance_report(subject: str = None, report_date: str = None):
     """
-    Returns an attendance report, optionally filtered by course and/or date.
+    Returns an attendance report, optionally filtered by subject and/or date.
     Date format: YYYY-MM-DD. Defaults to today.
     """
     target_date = report_date or date.today().isoformat()
@@ -147,15 +125,14 @@ async def get_attendance_report(course_id: str = None, report_date: str = None):
     query = (
         supabase.table("attendance")
         .select(
-            "id, date, time, "
-            "students(name, roll_number), "
-            "courses(name, code)"
+            "id, date, time, subject, "
+            "students(name, roll_number)"
         )
         .eq("date", target_date)
     )
 
-    if course_id:
-        query = query.eq("course_id", course_id)
+    if subject:
+        query = query.eq("subject", subject)
 
     result = query.order("time").execute()
 

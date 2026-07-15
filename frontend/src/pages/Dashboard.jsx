@@ -139,7 +139,7 @@ export default function Dashboard() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/8">
-                {["#", "Student Name", "Roll Number", "Course", "Time"].map((h) => (
+                {["#", "Student Name", "Roll Number", "Subject", "Time"].map((h) => (
                   <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-widest">
                     {h}
                   </th>
@@ -189,7 +189,7 @@ export default function Dashboard() {
                     </td>
                     <td className="px-6 py-3.5">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 text-xs font-mono">
-                        {record.courses?.code ?? "—"}
+                        {record.subject ?? "—"}
                       </span>
                     </td>
                     <td className="px-6 py-3.5 text-zinc-400 text-xs font-mono">

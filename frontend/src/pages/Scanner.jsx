@@ -4,15 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { scanFace } from "../api";
 
-const COURSES = [
-  { id: "77d07b8b-0ae2-4599-b8fc-7fc10b6bde64", code: "CS201", name: "Data Structures" },
-  { id: "f7f4072f-c012-4d09-8330-05c00da38d3c", code: "CS301", name: "Operating Systems" },
-  { id: "da40f144-e971-43c4-a62f-b55fdd5e97d7", code: "CS401", name: "Machine Learning" },
-];
 
-// NOTE: Replace the id values above with the actual UUIDs from your
-// Supabase `courses` table once you have them (from GET /attendance/report
-// or directly from the Supabase dashboard).
+
+const professor = JSON.parse(sessionStorage.getItem("professorProfile") || "null");
+const currentSubject = professor?.subject || "Unknown Subject";
 
 const WEBCAM_CONSTRAINTS = {
   width: { ideal: 1280 },
@@ -21,14 +16,13 @@ const WEBCAM_CONSTRAINTS = {
 };
 
 export default function Scanner() {
-  const [selectedCourse, setSelectedCourse] = useState("");
   const [scanning, setScanning] = useState(false);
   const [lastResult, setLastResult] = useState(null); // { type: "success"|"error", data }
   const [camReady, setCamReady] = useState(false);
   const [camError, setCamError] = useState(false);
   const webcamRef = useRef(null);
 
-  const canScan = selectedCourse && camReady && !scanning;
+  const canScan = camReady && !scanning;
 
   const handleScan = useCallback(async () => {
     if (!canScan) return;
@@ -43,9 +37,8 @@ export default function Scanner() {
     setLastResult(null);
 
     try {
-      const res = await scanFace(selectedCourse, screenshot);
+      const res = await scanFace(currentSubject, screenshot);
       const data = res.data;
-      const course = COURSES.find((c) => c.id === selectedCourse);
 
       setLastResult({ type: "success", data });
 
@@ -83,7 +76,7 @@ export default function Scanner() {
     } finally {
       setScanning(false);
     }
-  }, [canScan, selectedCourse]);
+  }, [canScan]);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -100,51 +93,14 @@ export default function Scanner() {
       </motion.div>
 
       <div className="space-y-5">
-        {/* Step 1 — Course selector */}
+        {/* Subject context (from logged-in professor) */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
           className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm p-5"
         >
-          <div className="flex items-center gap-3 mb-4">
-            <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
-            <span className="text-sm font-semibold text-zinc-200">Select Course</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {COURSES.map((course) => (
-              <button
-                key={course.id}
-                type="button"
-                onClick={() => setSelectedCourse(course.id)}
-                className={`relative py-3 px-4 rounded-xl border text-sm font-medium text-left transition-all ${
-                  selectedCourse === course.id
-                    ? "border-indigo-500/70 bg-indigo-600/20 text-white"
-                    : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/8 hover:text-zinc-200"
-                }`}
-              >
-                {selectedCourse === course.id && (
-                  <motion.div
-                    layoutId="course-selected"
-                    className="absolute inset-0 rounded-xl border border-indigo-400/40 bg-indigo-600/10"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <div className="relative">
-                  <div className="font-mono text-xs text-indigo-400 mb-0.5">{course.code}</div>
-                  <div className="text-white text-xs">{course.name}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          {!selectedCourse && (
-            <p className="text-xs text-amber-400/70 mt-3 flex items-center gap-1.5">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-              </svg>
-              Please select a course before scanning.
-            </p>
-          )}
+          <p className="text-xs text-zinc-400 uppercase tracking-wide mb-1">Subject</p>
+          <p className="text-white text-sm font-semibold">{currentSubject}</p>
         </motion.div>
 
         {/* Step 2 — Webcam */}
@@ -307,7 +263,7 @@ export default function Scanner() {
                       <span className="text-zinc-400 ml-2 font-mono text-xs">{lastResult.data.student.roll_number}</span>
                     </p>
                     <p className="text-zinc-400 text-xs mt-1">
-                      {lastResult.data.course.name} ({lastResult.data.course.code}) · {lastResult.data.date}
+                      {lastResult.data.subject} · {lastResult.data.date}
                       {lastResult.data.match_confidence && (
                         <span className="ml-2 text-emerald-400/70">{lastResult.data.match_confidence}% confidence</span>
                       )}

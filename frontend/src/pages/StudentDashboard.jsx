@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import api from "../api"; 
+
+const TOTAL_WORKING_DAYS = 20;
 
 export default function StudentDashboard() {
   const [attendance, setAttendance] = useState([]);
@@ -24,6 +26,22 @@ export default function StudentDashboard() {
       .catch((err) => console.error("Error loading profile logs:", err))
       .finally(() => setLoading(false));
   }, [rollNumber]);
+  // Group attendance by subject for the monthly summary
+  const monthlySummary = useMemo(() => {
+    const bySubject = {};
+    attendance.forEach((r) => {
+      const subject = r.subject || "Unknown";
+      bySubject[subject] = (bySubject[subject] || 0) + 1;
+    });
+    return Object.entries(bySubject).map(([subject, present]) => ({
+      subject,
+      present,
+      absent: Math.max(0, TOTAL_WORKING_DAYS - present),
+      percentage: Math.round((present / TOTAL_WORKING_DAYS) * 100),
+    }));
+  }, [attendance]);
+
+  const currentMonth = new Date().toLocaleString("default", { month: "long", year: "numeric" });
 
   const handleFaceUpdateRequest = () => {
     toast.success("Recalibration request successfully forwarded to Admin!", {
@@ -61,6 +79,50 @@ export default function StudentDashboard() {
           <div className="text-xs text-zinc-500 mt-1">Face template secure in cloud node</div>
         </div>
       </div>
+      
+       {/* Monthly Report */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-zinc-200">Monthly Report</h3>
+          <span className="text-xs text-zinc-500">{currentMonth}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/8 bg-white/[0.01]">
+                {["Subject", "Present", "Absent", "%"].map((h) => (
+                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-widest">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-zinc-500 text-sm">Compiling report…</td></tr>
+              ) : monthlySummary.length === 0 ? (
+                <tr><td colSpan={4} className="px-6 py-8 text-center text-zinc-500 text-sm">No attendance recorded yet.</td></tr>
+              ) : (
+                monthlySummary.map((row) => (
+                  <tr key={row.subject} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                    <td className="px-6 py-3.5 text-white font-medium">{row.subject}</td>
+                    <td className="px-6 py-3.5 text-emerald-400 font-semibold">{row.present}</td>
+                    <td className="px-6 py-3.5 text-rose-400 font-semibold">{row.absent}</td>
+                    <td className="px-6 py-3.5">
+                      <span className={`font-bold text-sm ${row.percentage >= 75 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {row.percentage}%
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        {!loading && monthlySummary.length > 0 && (
+          <div className="px-6 py-3 border-t border-white/5">
+            <span className="text-xs text-zinc-600">Based on {TOTAL_WORKING_DAYS} working days · 75% attendance required</span>
+          </div>
+        )}
+      </motion.div>
 
       {/* Personal Attendance List */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
@@ -89,8 +151,8 @@ export default function StudentDashboard() {
                 attendance.map((record, idx) => (
                   <tr key={record.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                     <td className="px-6 py-4 text-zinc-500 font-mono text-xs">{idx + 1}</td>
-                    <td className="px-6 py-4 text-white font-medium">{record.courses?.name || "General Course"}</td>
-                    <td className="px-6 py-4">
+                      <td className="px-6 py-4 text-white font-medium">{record.subject || "—"}</td>                  
+                      <td className="px-6 py-4">
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PRESENT</span>
                     </td>
                     <td className="px-6 py-4 text-zinc-400 text-xs font-mono">{record.time ? record.time.slice(0, 8) : "—"}</td>

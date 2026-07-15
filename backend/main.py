@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import students, attendance
-
+from app.routers import students, attendance, professors
 app = FastAPI(
     title="Facial Recognition Attendance System",
     description="API for registering students and marking attendance via face recognition.",
@@ -17,6 +16,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",   # Vite dev server
         "http://localhost:3000",   # fallback CRA / other dev port
+        "https://online-attendance-system-ruddy.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -28,7 +28,7 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(students.router)
 app.include_router(attendance.router)
-
+app.include_router(professors.router)
 
 # ---------------------------------------------------------------------------
 # Root health-check — useful for verifying the server is running

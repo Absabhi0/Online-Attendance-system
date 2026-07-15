@@ -62,6 +62,7 @@ const ALL_NAV_ITEMS = [
       </svg>
     ),
   },
+ 
   {
     to: "/scanner",
     label: "Live Scanner",
@@ -237,10 +238,7 @@ function AppShell() {
                 <Route path="/register" element={<RequireAuth><Register /></RequireAuth>} />
                 <Route path="/scanner" element={<RequireAuth><Scanner /></RequireAuth>} />
                 <Route path="/monthly-report" element={<RequireAuth><MonthlyReport /></RequireAuth>} />
-
-                {/* Student Route */}
                 <Route path="/student-dashboard" element={<RequireAuth><StudentDashboard /></RequireAuth>} />
-
                 {/* Catch-all Fallback (Must always be at the bottom) */}
                 <Route path="*" element={<Navigate to="/dashboard" replace />} />
               </Routes>

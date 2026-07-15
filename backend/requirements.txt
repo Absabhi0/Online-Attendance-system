@@ -16,3 +16,6 @@ supabase==2.4.3
 # Env & validation
 python-dotenv==1.0.1
 pydantic
+
+bcrypt==4.0.1
+passlib[bcrypt]==1.7.4

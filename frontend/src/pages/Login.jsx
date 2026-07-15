@@ -1,14 +1,8 @@
+import { loginStudentProfile, loginProfessor, registerProfessor } from "../api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-
-// 1. IMPORT THE DATABASE CONNECTION HERE
-import { loginStudentProfile } from "../api";
-
-// Mock Admin credential — Admin is still hardcoded for this demo
-const ADMIN_PASSWORD = "admin123";
-
 // Notice we deleted the fake STUDENT_ID and STUDENT_PASSWORD constants
 // because we are using the real database for students now!
 
@@ -22,23 +16,59 @@ export default function Login({ onSuccess }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState("student"); // "student" | "admin"
 
-  // Admin form state
-  const [adminPass, setAdminPass] = useState("");
+
+// Professor form state
+  const [profEmail, setProfEmail] = useState("");
+  const [profPass, setProfPass] = useState("");
+
+  // Create account form state
+  const [newName, setNewName] = useState("");
+  const [newSubject, setNewSubject] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // Student form state
   const [studentId, setStudentId] = useState("");
   const [studentPass, setStudentPass] = useState("");
 
   // 2. UPDATED ADMIN LOGIN (Adds the Admin Role)
-  const handleAdminLogin = (e) => {
+  const handleProfessorLogin = async (e) => {
     e.preventDefault();
-    if (adminPass === ADMIN_PASSWORD) {
-      sessionStorage.setItem("role", "admin"); // <-- Tells the app you are an Admin
-      onSuccess?.();
-      toast.success("Welcome, Admin!", { icon: "🔐" });
-      window.location.href = "/dashboard";
-    } else {
-      toast.error("Incorrect admin password.");
+    try {
+      const res = await loginProfessor(profEmail, profPass);
+      const data = res.data;
+      if (data.status === "success") {
+        sessionStorage.setItem("authed", "true");
+        sessionStorage.setItem("role", "admin"); // keeps existing route-guard logic working
+        sessionStorage.setItem("professorProfile", JSON.stringify(data.professor));
+        onSuccess?.();
+        toast.success(`Welcome, ${data.professor.name}!`, { icon: "🔐" });
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Invalid email or password.");
+    }
+  };
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const res = await registerProfessor(newName, newSubject, newPassword);
+      const email = res.data.professor.email;
+      toast.success(
+        `Account created! Login email: ${email} — save this, it won't be shown again.`,
+        { duration: 10000 }
+      );
+      setNewName("");
+      setNewSubject("");
+      setNewPassword("");
+      setProfEmail(email); // pre-fill professor login tab
+      setMode("professor"); // jump straight to login tab
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to create account.");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -160,8 +190,8 @@ export default function Login({ onSuccess }) {
 
           {/* Mode toggle tabs */}
           <div className="flex p-1.5 m-4 rounded-xl bg-white/5 border border-white/10 gap-1">
-            {["student", "admin"].map((tab) => (
-              <button
+               {["student", "professor", "create"].map((tab) => (      
+                <button
                 key={tab}
                 onClick={() => setMode(tab)}
                 className="relative flex-1 py-2 text-sm font-medium rounded-lg transition-colors duration-200 z-10"
@@ -174,8 +204,10 @@ export default function Login({ onSuccess }) {
                     transition={{ type: "spring", stiffness: 380, damping: 32 }}
                   />
                 )}
-                <span className="relative z-10 capitalize">{tab === "student" ? "Student" : "Admin"}</span>
-              </button>
+               <span className="relative z-10 capitalize">
+               {tab === "student" ? "Student" : tab === "professor" ? "Professor" : "Create"}
+               </span>  
+         </button>
             ))}
           </div>
 
@@ -228,46 +260,117 @@ export default function Login({ onSuccess }) {
                     Sign in as Student
                   </motion.button>
                 </motion.form>
-              ) : (
-                <motion.form
-                  key="admin"
+               ) : mode === "professor" ? (                
+               <motion.form
+                  key="professor"
                   initial={{ opacity: 0, x: 24 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -24 }}
                   transition={{ duration: 0.28, ease: "easeOut" }}
-                  onSubmit={handleAdminLogin}
+                  onSubmit={handleProfessorLogin}
                   className="space-y-4"
                 >
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                    <svg className="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-6a4 4 0 100-8 4 4 0 000 8z" />
-                    </svg>
-                    <p className="text-xs text-amber-300">Admin access grants full system control.</p>
-                  </div>
                   <div>
                     <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide uppercase">
-                      Admin Password
+                      Email
                     </label>
                     <input
-                      type="password"
-                      value={adminPass}
-                      onChange={(e) => setAdminPass(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-indigo-500/70 focus:bg-black/40 transition-all [&:-webkit-autofill]:[-webkit-text-fill-color:white] [&:-webkit-autofill]:[transition:background-color_9999s_ease-in-out_0s]"
+                      type="email"
+                      value={profEmail}
+                      onChange={(e) => setProfEmail(e.target.value)}
+                      placeholder="yourname@college.edu"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-indigo-500/70 focus:bg-black/40 transition-all"
                       required
                     />
                   </div>
-                  <p className="text-xs text-zinc-500">Demo password: <span className="text-zinc-300 font-mono">admin123</span></p>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide uppercase">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={profPass}
+                      onChange={(e) => setProfPass(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-indigo-500/70 focus:bg-black/40 transition-all"
+                      required
+                    />
+                  </div>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     className="w-full py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-violet-900/40"
                   >
-                    Sign in as Admin
+                    Sign in as Professor
                   </motion.button>
                 </motion.form>
-              )}
+                ) : (
+                <motion.form
+                  key="create"
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
+                  onSubmit={handleCreateAccount}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <p className="text-xs text-emerald-300">Creates a new professor login. Login email is auto-generated.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide uppercase">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="e.g. Dr. Manish Taram"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500/70 focus:bg-black/40 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide uppercase">
+                      Subject
+                    </label>
+                    <input
+                      type="text"
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      placeholder="e.g. Data Structures"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500/70 focus:bg-black/40 transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1.5 tracking-wide uppercase">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2.5 rounded-xl bg-black/20 border border-white/10 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500/70 focus:bg-black/40 transition-all"
+                      required
+                    />
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: creating ? 1 : 1.02 }}
+                    whileTap={{ scale: creating ? 1 : 0.98 }}
+                    type="submit"
+                    disabled={creating}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors shadow-lg shadow-emerald-900/40 disabled:opacity-50"
+                  >
+                    {creating ? "Creating..." : "Create Professor Account"}
+                  </motion.button>
+                </motion.form>
+               )}
             </AnimatePresence>
           </div>
         </div>
