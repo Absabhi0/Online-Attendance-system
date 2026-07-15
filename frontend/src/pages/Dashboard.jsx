@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
-import { fetchStudents, fetchAttendanceReport } from "../api";
+import { fetchStudents, fetchAttendanceReport, fetchProfessors } from "../api";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 16 },
@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [attendance, setAttendance] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [loadingAttendance, setLoadingAttendance] = useState(true);
+  const [professors, setProfessors] = useState([]);
 
   useEffect(() => {
     fetchStudents()
@@ -27,9 +28,12 @@ export default function Dashboard() {
       .then((r) => setAttendance(r.data.records || []))
       .catch(() => {})
       .finally(() => setLoadingAttendance(false));
+
+    fetchProfessors()
+      .then((r) => setProfessors(r.data.professors || []))
+      .catch(() => {});
   }, []);
 
-  // Get the logged-in professor's subject (if logged in as professor)
   const professorData = JSON.parse(sessionStorage.getItem("professorProfile") || "null");
   const mySubject = professorData?.subject || null;
 
@@ -41,6 +45,14 @@ export default function Dashboard() {
       otherAttendance: attendance.filter((r) => r.subject !== mySubject),
     };
   }, [attendance, mySubject]);
+
+  const subjectToProfessor = useMemo(() => {
+    const map = {};
+    professors.forEach((p) => {
+      map[p.subject] = p.name;
+    });
+    return map;
+  }, [professors]);
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -144,8 +156,13 @@ export default function Dashboard() {
           className="rounded-2xl border border-indigo-500/25 bg-indigo-500/5 backdrop-blur-sm overflow-hidden mb-6"
         >
           <div className="flex items-center justify-between px-6 py-4 border-b border-indigo-500/15">
-            <h3 className="text-sm font-semibold text-indigo-300">My Subject — {mySubject}</h3>
-            <span className="text-xs text-zinc-500 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/8">
+            <div>
+               <h3 className="text-sm font-semibold text-indigo-300">My Subject — {mySubject}</h3>
+               {subjectToProfessor[mySubject] && (
+                 <p className="text-xs text-zinc-500 mt-0.5">Taught by {subjectToProfessor[mySubject]}</p>
+                  )}
+           </div>         
+           <span className="text-xs text-zinc-500 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/8">
               {loadingAttendance ? "…" : myAttendance.length} records
             </span>
           </div>
@@ -216,6 +233,9 @@ export default function Dashboard() {
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 text-xs font-mono">
                         {record.subject ?? "—"}
                       </span>
+                      {record.subject && subjectToProfessor[record.subject] && (
+                        <p className="text-[10px] text-zinc-500 mt-1">{subjectToProfessor[record.subject]}</p>
+                      )}
                     </td>
                     <td className="px-6 py-3.5 text-zinc-400 text-xs font-mono">{record.time ? record.time.slice(0, 8) : "—"}</td>
                   </tr>

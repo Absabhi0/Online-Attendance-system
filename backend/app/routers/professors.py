@@ -97,3 +97,16 @@ async def login_professor(credentials: ProfessorLoginRequest):
             "subject": professor["subject"],
         },
     }
+
+@router.get("/")
+async def list_professors():
+    """
+    Returns all professors (name + subject only) for lookups like
+    displaying 'which professor teaches this subject' in reports.
+    """
+    result = (
+        supabase.table("professors")
+        .select("id, name, subject")
+        .execute()
+    )
+    return {"professors": result.data}

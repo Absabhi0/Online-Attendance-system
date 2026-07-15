@@ -90,4 +90,6 @@ export const loginProfessor = (email, password) => {
   return api.post("/professors/login", { email, password });
 };
 
+export const fetchProfessors = () => api.get("/professors/");
+
 export default api;
