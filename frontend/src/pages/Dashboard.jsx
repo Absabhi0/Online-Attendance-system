@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import { fetchStudents, fetchAttendanceReport } from "../api";
 
 const cardVariants = {
@@ -28,6 +28,19 @@ export default function Dashboard() {
       .catch(() => {})
       .finally(() => setLoadingAttendance(false));
   }, []);
+
+  // Get the logged-in professor's subject (if logged in as professor)
+  const professorData = JSON.parse(sessionStorage.getItem("professorProfile") || "null");
+  const mySubject = professorData?.subject || null;
+
+  // Split attendance into "my subject" vs "other subjects"
+  const { myAttendance, otherAttendance } = useMemo(() => {
+    if (!mySubject) return { myAttendance: [], otherAttendance: attendance };
+    return {
+      myAttendance: attendance.filter((r) => r.subject === mySubject),
+      otherAttendance: attendance.filter((r) => r.subject !== mySubject),
+    };
+  }, [attendance, mySubject]);
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -122,6 +135,51 @@ export default function Dashboard() {
       </div>
 
       {/* Today's attendance table */}
+      {/* Grid 1 — My subject's attendance */}
+      {mySubject && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.45 }}
+          className="rounded-2xl border border-indigo-500/25 bg-indigo-500/5 backdrop-blur-sm overflow-hidden mb-6"
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-indigo-500/15">
+            <h3 className="text-sm font-semibold text-indigo-300">My Subject — {mySubject}</h3>
+            <span className="text-xs text-zinc-500 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/8">
+              {loadingAttendance ? "…" : myAttendance.length} records
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/8">
+                  {["#", "Student Name", "Roll Number", "Time"].map((h) => (
+                    <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-widest">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loadingAttendance ? (
+                  <tr><td colSpan={4} className="px-6 py-10 text-center text-zinc-500 text-sm">Loading…</td></tr>
+                ) : myAttendance.length === 0 ? (
+                  <tr><td colSpan={4} className="px-6 py-10 text-center text-zinc-500 text-sm">No attendance marked for {mySubject} today.</td></tr>
+                ) : (
+                  myAttendance.map((record, idx) => (
+                    <tr key={record.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
+                      <td className="px-6 py-3.5 text-zinc-500 font-mono text-xs">{idx + 1}</td>
+                      <td className="px-6 py-3.5 text-white font-medium">{record.students?.name ?? "—"}</td>
+                      <td className="px-6 py-3.5 font-mono text-xs text-zinc-300">{record.students?.roll_number ?? "—"}</td>
+                      <td className="px-6 py-3.5 text-zinc-400 text-xs font-mono">{record.time ? record.time.slice(0, 8) : "—"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Grid 2 — All other subjects' attendance */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -129,73 +187,38 @@ export default function Dashboard() {
         className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden"
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
-          <h3 className="text-sm font-semibold text-zinc-200">Today's Attendance Log</h3>
+          <h3 className="text-sm font-semibold text-zinc-200">{mySubject ? "Other Subjects — Today" : "Today's Attendance Log"}</h3>
           <span className="text-xs text-zinc-500 font-mono bg-white/5 px-2.5 py-1 rounded-lg border border-white/8">
-            {loadingAttendance ? "…" : attendance.length} records
+            {loadingAttendance ? "…" : otherAttendance.length} records
           </span>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/8">
                 {["#", "Student Name", "Roll Number", "Subject", "Time"].map((h) => (
-                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-widest">
-                    {h}
-                  </th>
+                  <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-zinc-500 uppercase tracking-widest">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loadingAttendance ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-zinc-500 text-sm">
-                    <div className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                      Loading records…
-                    </div>
-                  </td>
-                </tr>
-              ) : attendance.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <svg className="w-8 h-8 text-zinc-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                      </svg>
-                      <p className="text-zinc-500 text-sm">No attendance records for today.</p>
-                      <p className="text-zinc-600 text-xs">Use the Live Scanner to mark attendance.</p>
-                    </div>
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-6 py-12 text-center text-zinc-500 text-sm">Loading records…</td></tr>
+              ) : otherAttendance.length === 0 ? (
+                <tr><td colSpan={5} className="px-6 py-16 text-center text-zinc-500 text-sm">No other attendance records today.</td></tr>
               ) : (
-                attendance.map((record, idx) => (
-                  <motion.tr
-                    key={record.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.35 + idx * 0.04 }}
-                    className="border-b border-white/5 hover:bg-white/3 transition-colors"
-                  >
+                otherAttendance.map((record, idx) => (
+                  <tr key={record.id} className="border-b border-white/5 hover:bg-white/3 transition-colors">
                     <td className="px-6 py-3.5 text-zinc-500 font-mono text-xs">{idx + 1}</td>
-                    <td className="px-6 py-3.5 text-white font-medium">
-                      {record.students?.name ?? "—"}
-                    </td>
-                    <td className="px-6 py-3.5 font-mono text-xs text-zinc-300">
-                      {record.students?.roll_number ?? "—"}
-                    </td>
+                    <td className="px-6 py-3.5 text-white font-medium">{record.students?.name ?? "—"}</td>
+                    <td className="px-6 py-3.5 font-mono text-xs text-zinc-300">{record.students?.roll_number ?? "—"}</td>
                     <td className="px-6 py-3.5">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 text-xs font-mono">
                         {record.subject ?? "—"}
                       </span>
                     </td>
-                    <td className="px-6 py-3.5 text-zinc-400 text-xs font-mono">
-                      {record.time ? record.time.slice(0, 8) : "—"}
-                    </td>
-                  </motion.tr>
+                    <td className="px-6 py-3.5 text-zinc-400 text-xs font-mono">{record.time ? record.time.slice(0, 8) : "—"}</td>
+                  </tr>
                 ))
               )}
             </tbody>
